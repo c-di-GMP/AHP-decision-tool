@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用层次分析法来决策！</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        const AHPTool = () => {
+          const [step, setStep] = useState(1);
+          const [goal, setGoal] = useState('选择合适的研究生课题组');
+          const [criteria, setCriteria] = useState(['方向兴趣', '导师人品', '科研资源', '团队氛围', '毕业难度']);
+          const [alternatives, setAlternatives] = useState(['张老师组', '李老师组', '王老师组']);
+          const [criteriaMatrix, setCriteriaMatrix] = useState({});
+          const [alternativeMatrices, setAlternativeMatrices] = useState({});
+          const [results, setResults] = useState(null);
+
+          const scales = [
+            { value: 9, label: '9', desc: '极端重要' },
+            { value: 7, label: '7', desc: '强烈重要' },
+            { value: 5, label: '5', desc: '明显重要' },
+            { value: 3, label: '3', desc: '稍微重要' },
+            { value: 1, label: '1', desc: '同样重要' },
+            { value: 1/3, label: '1/3', desc: '稍微次要' },
+            { value: 1/5, label: '1/5', desc: '明显次要' },
+            { value: 1/7, label: '1/7', desc: '强烈次要' },
+            { value: 1/9, label: '1/9', desc: '极端次要' },
+          ];
+
+          const addCriterion = () => {
+            setCriteria([...criteria, `准则${criteria.length + 1}`]);
+          };
+
+          const removeCriterion = (index) => {
+            if (criteria.length > 2) {
+              setCriteria(criteria.filter((_, i) => i !== index));
+            }
+          };
+
+          const addAlternative = () => {
+            setAlternatives([...alternatives, `方案${alternatives.length + 1}`]);
+          };
+
+          const removeAlternative = (index) => {
+            if (alternatives.length > 2) {
+              setAlternatives(alternatives.filter((_, i) => i !== index));
+            }
+          };
+
+          const updateCriterion = (index, value) => {
+            const newCriteria = [...criteria];
+            newCriteria[index] = value;
+            setCriteria(newCriteria);
+          };
+
+          const updateAlternative = (index, value) => {
+            const newAlternatives = [...alternatives];
+            newAlternatives[index] = value;
+            setAlternatives(newAlternatives);
+          };
+
+          const getMatrixValue = (matrix, i, j) => {
+            if (i === j) return 1;
+            const key = `${i}-${j}`;
+            const reverseKey = `${j}-${i}`;
+            if (matrix[key]) return matrix[key];
+            if (matrix[reverseKey]) return 1 / matrix[reverseKey];
+            return 1;
+          };
+
+          const setMatrixValue = (matrix, setMatrix, i, j, value) => {
+            const key = `${i}-${j}`;
+            setMatrix({ ...matrix, [key]: parseFloat(value) });
+          };
+
+          const calculateWeights = (matrix, items) => {
+            const n = items.length;
+            const fullMatrix = [];
+            
+            for (let i = 0; i < n; i++) {
+              fullMatrix[i] = [];
+              for (let j = 0; j < n; j++) {
+                fullMatrix[i][j] = getMatrixValue(matrix, i, j);
+              }
+            }
+
+            const columnSums = [];
+            for (let j = 0; j < n; j++) {
+              let sum = 0;
+              for (let i = 0; i < n; i++) {
+                sum += fullMatrix[i][j];
+              }
+              columnSums[j] = sum;
+            }
+
+            const normalized = [];
+            for (let i = 0; i < n; i++) {
+              normalized[i] = [];
+              for (let j = 0; j < n; j++) {
+                normalized[i][j] = fullMatrix[i][j] / columnSums[j];
+              }
+            }
+
+            const weights = [];
+            for (let i = 0; i < n; i++) {
+              let sum = 0;
+              for (let j = 0; j < n; j++) {
+                sum += normalized[i][j];
+              }
+              weights[i] = sum / n;
+            }
+
+            return weights;
+          };
+
+          const calculateResults = () => {
+            const criteriaWeights = calculateWeights(criteriaMatrix, criteria);
+            
+            const alternativeScores = alternatives.map(() => 0);
+            
+            criteria.forEach((criterion, cIndex) => {
+              const matrix = alternativeMatrices[criterion] || {};
+              const weights = calculateWeights(matrix, alternatives);
+              
+              weights.forEach((weight, aIndex) => {
+                alternativeScores[aIndex] += weight * criteriaWeights[cIndex];
+              });
+            });
+
+            const sortedResults = alternatives.map((alt, index) => ({
+              name: alt,
+              score: alternativeScores[index],
+              percentage: (alternativeScores[index] * 100).toFixed(1)
+            })).sort((a, b) => b.score - a.score);
+
+            setResults({
+              criteriaWeights: criteriaWeights.map((w, i) => ({
+                name: criteria[i],
+                weight: w,
+                percentage: (w * 100).toFixed(1)
+              })),
+              alternatives: sortedResults
+            });
+            setStep(4);
+          };
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-2">使用层次分析法来决策！</h1>
+                  <p className="text-gray-600">科学量化你的决策过程</p>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <div className="flex items-center mb-6">
+                    {[1, 2, 3, 4].map((s) => (
+                      <div key={s} className="flex items-center flex-1">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          step >= s ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'
+                        }`}>
+                          {s}
+                        </div>
+                        {s < 4 && <div className={`flex-1 h-1 ${step > s ? 'bg-indigo-600' : 'bg-gray-200'}`} />}
+                      </div>
+                    ))}
+                  </div>
+
+                  {step === 1 && (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-4">第一步：定义目标和准则</h2>
+                      
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">决策目标</label>
+                        <input
+                          type="text"
+                          value={goal}
+                          onChange={(e) => setGoal(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          placeholder="例如：选择合适的研究生课题组"
+                        />
+                      </div>
+
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">评价准则（至少2个）</label>
+                        {criteria.map((criterion, index) => (
+                          <div key={index} className="flex gap-2 mb-2">
+                            <input
+                              type="text"
+                              value={criterion}
+                              onChange={(e) => updateCriterion(index, e.target.value)}
+                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                              placeholder={`准则${index + 1}`}
+                            />
+                            {criteria.length > 2 && (
+                              <button
+                                onClick={() => removeCriterion(index)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          onClick={addCriterion}
+                          className="mt-2 flex items-center gap-2 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                        >
+                          ＋ 添加准则
+                        </button>
+                      </div>
+
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">备选方案（至少2个）</label>
+                        {alternatives.map((alternative, index) => (
+                          <div key={index} className="flex gap-2 mb-2">
+                            <input
+                              type="text"
+                              value={alternative}
+                              onChange={(e) => updateAlternative(index, e.target.value)}
+                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                              placeholder={`方案${index + 1}`}
+                            />
+                            {alternatives.length > 2 && (
+                              <button
+                                onClick={() => removeAlternative(index)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          onClick={addAlternative}
+                          className="mt-2 flex items-center gap-2 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                        >
+                          ＋ 添加方案
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setStep(2)}
+                        className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        下一步：比较准则重要性
+                      </button>
+                    </div>
+                  )}
+
+                  {step === 2 && (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-4">第二步：准则重要性比较</h2>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <p className="text-sm text-blue-800">
+                          <strong>评分说明：</strong>请评价左侧准则相对于右侧准则的重要程度<br/>
+                          • 选择 9、7、5、3 表示左侧比右侧更重要<br/>
+                          • 选择 1 表示两者同样重要<br/>
+                          • 选择 1/3、1/5、1/7、1/9 表示右侧比左侧更重要
+                        </p>
+                      </div>
+
+                      {criteria.map((criterion1, i) => (
+                        criteria.slice(i + 1).map((criterion2, j) => {
+                          const actualJ = i + j + 1;
+                          return (
+                            <div key={`${i}-${actualJ}`} className="mb-6 p-4 bg-gray-50 rounded-lg">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="font-medium text-indigo-700">{criterion1}</span>
+                                <span className="text-gray-500">vs</span>
+                                <span className="font-medium text-gray-700">{criterion2}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                {scales.map((scale) => (
+                                  <button
+                                    key={scale.value}
+                                    onClick={() => setMatrixValue(criteriaMatrix, setCriteriaMatrix, i, actualJ, scale.value)}
+                                    className={`flex-1 px-2 py-3 rounded-lg text-sm transition-colors ${
+                                      getMatrixValue(criteriaMatrix, i, actualJ) === scale.value
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-white border border-gray-300 hover:bg-gray-100'
+                                    }`}
+                                    title={scale.desc}
+                                  >
+                                    <div className="font-bold">{scale.label}</div>
+                                    <div className="text-xs mt-1">{scale.desc}</div>
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-2 text-center">
+                                {getMatrixValue(criteriaMatrix, i, actualJ) >= 1 
+                                  ? `${criterion1} 比 ${criterion2} 重要 ${getMatrixValue(criteriaMatrix, i, actualJ)} 倍`
+                                  : `${criterion2} 比 ${criterion1} 重要 ${(1/getMatrixValue(criteriaMatrix, i, actualJ)).toFixed(0)} 倍`
+                                }
+                              </p>
+                            </div>
+                          );
+                        })
+                      ))}
+
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => setStep(1)}
+                          className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50"
+                        >
+                          上一步
+                        </button>
+                        <button
+                          onClick={() => setStep(3)}
+                          className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700"
+                        >
+                          下一步：比较各方案
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 3 && (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-4">第三步：在各准则下比较方案</h2>
+                      
+                      {criteria.map((criterion, cIndex) => (
+                        <div key={cIndex} className="mb-8">
+                          <h3 className="text-lg font-semibold mb-4 text-indigo-700">
+                            在"{criterion}"准则下比较各方案
+                          </h3>
+                          
+                          {alternatives.map((alt1, i) => (
+                            alternatives.slice(i + 1).map((alt2, j) => {
+                              const actualJ = i + j + 1;
+                              const matrix = alternativeMatrices[criterion] || {};
+                              return (
+                                <div key={`${i}-${actualJ}`} className="mb-4 p-4 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="font-medium text-indigo-600">{alt1}</span>
+                                    <span className="text-gray-500">vs</span>
+                                    <span className="font-medium text-gray-600">{alt2}</span>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    {scales.map((scale) => (
+                                      <button
+                                        key={scale.value}
+                                        onClick={() => {
+                                          const newMatrix = { ...matrix };
+                                          const key = `${i}-${actualJ}`;
+                                          newMatrix[key] = scale.value;
+                                          setAlternativeMatrices({
+                                            ...alternativeMatrices,
+                                            [criterion]: newMatrix
+                                          });
+                                        }}
+                                        className={`flex-1 px-2 py-3 rounded-lg text-sm transition-colors ${
+                                          getMatrixValue(matrix, i, actualJ) === scale.value
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'bg-white border border-gray-300 hover:bg-gray-100'
+                                        }`}
+                                        title={scale.desc}
+                                      >
+                                        <div className="font-bold text-xs">{scale.label}</div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ))}
+                        </div>
+                      ))}
+
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => setStep(2)}
+                          className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50"
+                        >
+                          上一步
+                        </button>
+                        <button
+                          onClick={calculateResults}
+                          className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700"
+                        >
+                          📊 计算结果
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 4 && results && (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-6">决策结果</h2>
+                      
+                      <div className="mb-8">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700">准则权重分布</h3>
+                        <div className="space-y-3">
+                          {results.criteriaWeights.map((item, index) => (
+                            <div key={index}>
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm font-medium text-gray-700">{item.name}</span>
+                                <span className="text-sm text-gray-600">{item.percentage}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-indigo-600 h-2 rounded-full"
+                                  style={{ width: `${item.percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mb-8">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700">方案综合评分</h3>
+                        <div className="space-y-4">
+                          {results.alternatives.map((item, index) => (
+                            <div key={index} className={`p-4 rounded-lg border-2 ${
+                              index === 0 ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'
+                            }`}>
+                              <div className="flex justify-between items-center mb-2">
+                                <div className="flex items-center gap-2">
+                                  {index === 0 && (
+                                    <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">推荐</span>
+                                  )}
+                                  <span className="font-semibold text-lg">{item.name}</span>
+                                </div>
+                                <span className={`text-2xl font-bold ${
+                                  index === 0 ? 'text-green-600' : 'text-gray-700'
+                                }`}>
+                                  {item.percentage}分
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div
+                                  className={`h-3 rounded-full ${
+                                    index === 0 ? 'bg-green-500' : 'bg-gray-400'
+                                  }`}
+                                  style={{ width: `${item.percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setStep(1);
+                          setCriteriaMatrix({});
+                          setAlternativeMatrices({});
+                          setResults(null);
+                        }}
+                        className="w-full border border-indigo-600 text-indigo-600 py-3 rounded-lg hover:bg-indigo-50"
+                      >
+                        重新开始
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
+                  <h3 className="font-semibold text-gray-800 mb-2">使用提示</h3>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• 评分时保持一致性：如果A比B重要3倍，B比C重要2倍，那么A比C应该重要约6倍</li>
+                    <li>• 准则数量建议控制在5-7个，太多会增加比较难度</li>
+                    <li>• 评分可以根据实际情况随时调整，重新计算即可</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        ReactDOM.render(<AHPTool />, document.getElementById('root'));
+    </script>
+</body>
+</html>

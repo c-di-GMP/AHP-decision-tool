@@ -38,7 +38,7 @@
 - 明确你的决策目标（如：选择研究生课题组）
 - 列出评价准则（导师水平、研究方向、科研资源、团队氛围、毕业难度）
 - 列出备选方案（张老师组、李老师组、王老师组）
-![屏幕截图_P1](https://github.com/user-attachments/assets/1ffc9067-40cf-4a05-bb8e-89d036fe9234)
+[e.g., screenshot_P1]
 
 
 #### 第二步：准则重要性评分
@@ -46,19 +46,19 @@
 - **9, 7, 5, 3** - 左侧准则更重要
 - **1** - 同样重要
 - **1/3, 1/5, 1/7, 1/9** - 右侧准则更重要
-![屏幕截图_P2](https://github.com/user-attachments/assets/be9b5342-132d-4b93-8fcb-26437c876318)
+[e.g., screenshot_P2]
 
 
 #### 第三步：方案评分
 在每个准则下，比较各个方案的优劣程度
-![屏幕截图_P3](https://github.com/user-attachments/assets/3615400a-f4b1-4039-856e-b0723f511b9a)
+[e.g., screenshot_P3]
 
 #### 第四步：查看结果
 系统自动计算并展示：
 - 各准则的权重分布
 - 各方案的综合得分
 - 推荐的最优方案
-![屏幕截图_P4](https://github.com/user-attachments/assets/4dedaa15-8c42-45d6-aaaf-d63b98eaf232)
+[e.g., screenshot_P4]
 
 ## 🧮 算法说明
 
